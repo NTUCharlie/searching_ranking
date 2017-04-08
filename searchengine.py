@@ -3,17 +3,17 @@ from bs4 import BeautifulSoup
 import urllib.request
 from urllib.parse import urlparse
 from urllib.parse import urljoin
-
+import sqlite3
 ignorewords=set(['the','of','to','and','a','in','is','it'])
 
 class crawler:
     #initialize the crawler with the name of database
     def __init__(self,dbname):
-        pass
+        self.con=sqlite3.connect(dbname)
     def __del__(self):
-        pass
+        self.con.close()
     def dbcommit(self):
-        pass
+        self.con.commit()
 
     def getentryid(self, table, field, value, createnew=True):
         return None
@@ -47,7 +47,6 @@ class crawler:
 
                 links=soup('a')
                 for link in links:
-                    print(link.attrs)
                     if 'href' in dict(link.attrs):
                         url=urljoin(page, link['href'])
                         if url.find("'")!=-1:
@@ -63,8 +62,15 @@ class crawler:
 
 
     def createindextables(self):
-        pass
-
-sourcepage=['http://www.6park.com/sg.shtml']
-cw=crawler('')
-cw.crawl(pages=sourcepage)
+        self.con.execute('create table urllist(url)')
+        self.con.execute('create table wordlist(word)')
+        self.con.execute('create table wordlocation(urlid, wordid,location)')
+        self.con.execute('create table link(fromid integer,toid integer)')
+        self.con.execute('create table linkwords(wordid, linkid)')
+        self.con.execute('create index wordidx on wordlist(word)')
+        self.con.execute('create index urlidx on urllist(url)')
+        self.con.execute('create index wordurlidx on wordlocation(wordid)')
+        self.con.execute('create index urltoidx on link(toid)')
+        self.con.execute('create index urlfromidx on link(fromid)')
+        self.dbcommit()
+        
