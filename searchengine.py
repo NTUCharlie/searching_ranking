@@ -4,6 +4,7 @@ import urllib.request
 from urllib.parse import urlparse
 from urllib.parse import urljoin
 import sqlite3
+import re
 ignorewords=set(['the','of','to','and','a','in','is','it'])
 
 class crawler:
@@ -16,10 +17,11 @@ class crawler:
         self.con.commit()
 
     def getentryid(self, table, field, value, createnew=True):
-        cur=self.con.execute("select rowid from {} where {}=:value".format(table, field),{"value":value})
+        cur=self.con.execute("select rowid from %s where %s='%s'" % (table, field, value))
         res=cur.fetchone()
         if res==None:
-            cur=self.con.executemany("insert into {} ({}) :values".format(table, field),{"value":value})
+            cur=self.con.execute("insert into %s (%s) values ('%s')" % (table,field,value))
+
             return cur.lastrowid
         else:
             return res[0]
@@ -38,17 +40,17 @@ class crawler:
             word=words[i]
             if word in ignorewords:continue
             wordid=self.getentryid('wordlist','word',word)
-            self.con.execute("insert into wordlocation(urlid, wordid, location) values (?,?,?),(urlid, wordid,i)")
+            self.con.execute("insert into wordlocation values (?,?,?)",(urlid, wordid, i,))
 
 
     def gettextonly(self, soup):
         v=soup.string
         if v==None:
             c=soup.contents
-            resulttxt=''
+            resulttext=''
             for t in c:
                 subtext=self.gettextonly(t)
-                resulttxt+=subtext+'\n'
+                resulttext+=subtext+'\n'
             return resulttext
         else:
             return v.strip()
@@ -58,10 +60,10 @@ class crawler:
         return [s.lower for s in splitter.split(text) if s!='']
 
     def isindexed(self,url):
-        u=self.con.execute("select rowid from urllist where url=?",(url)).fetchone()
-        print(u)
+        u=self.con.execute("select rowid from urllist where url='%s'" % url).fetchone()
+
         if u!= None :
-            v=self.con.execute("select * from wordlocation where urlid=?",(u[0])).fetchone()
+            v=self.con.execute("select * from wordlocation where urlid= '%d' " % u[0]).fetchone()
             if v!=None: return True
         return False
 
@@ -97,15 +99,18 @@ class crawler:
 
 
     def createindextables(self):
-        self.con.execute('create table urllist(url)')
-        self.con.execute('create table wordlist(word)')
-        self.con.execute('create table wordlocation(urlid, wordid,location)')
-        self.con.execute('create table link(fromid integer,toid integer)')
-        self.con.execute('create table linkwords(wordid, linkid)')
-        self.con.execute('create index wordidx on wordlist(word)')
-        self.con.execute('create index urlidx on urllist(url)')
+        self.con.execute('''create table urllist (url)''')
+        self.con.execute('''create table wordlist (word)''')
+        self.con.execute('''create table wordlocation (urlid, wordid,location)''')
+        self.con.execute('''create table link (fromid integer,toid integer)''')
+        self.con.execute('''create table linkwords (wordid, linkid)''')
+        self.con.execute('''create index wordidx on wordlist(word)''')
+        self.con.execute('''create index urlidx on urllist(url)''')
         self.con.execute('create index wordurlidx on wordlocation(wordid)')
         self.con.execute('create index urltoidx on link(toid)')
         self.con.execute('create index urlfromidx on link(fromid)')
         self.dbcommit()
-        
+
+
+#c=crawler('searchindex.db')
+#c.crawl(pages=["http://www.6park.com/sg.shtml"])
