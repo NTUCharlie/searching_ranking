@@ -16,19 +16,54 @@ class crawler:
         self.con.commit()
 
     def getentryid(self, table, field, value, createnew=True):
-        return None
+        cur=self.con.execute("select rowid from {} where {}=:value".format(table, field),{"value":value})
+        res=cur.fetchone()
+        if res==None:
+            cur=self.con.executemany("insert into {} ({}) :values".format(table, field),{"value":value})
+            return cur.lastrowid
+        else:
+            return res[0]
+
 
     def addtoindex(self, url, soup):
-        print('index {}'.format(url))
+        if self.isindexed(url):return ''
+        print('indexing '+url)
+
+        text=self.gettextonly(soup)
+        words=self.separaterwords(text)
+
+        urlid=self.getentryid('urllist', 'url', url)
+
+        for i in range(len(words)):
+            word=words[i]
+            if word in ignorewords:continue
+            wordid=self.getentryid('wordlist','word',word)
+            self.con.execute("insert into wordlocation(urlid, wordid, location) values (?,?,?),(urlid, wordid,i)")
+
 
     def gettextonly(self, soup):
-        return None
+        v=soup.string
+        if v==None:
+            c=soup.contents
+            resulttxt=''
+            for t in c:
+                subtext=self.gettextonly(t)
+                resulttxt+=subtext+'\n'
+            return resulttext
+        else:
+            return v.strip()
 
     def separaterwords(self, text):
-        return None
+        splitter=re.compile('\\W*')
+        return [s.lower for s in splitter.split(text) if s!='']
 
     def isindexed(self,url):
-         return False
+        u=self.con.execute("select rowid from urllist where url=?",(url)).fetchone()
+        print(u)
+        if u!= None :
+            v=self.con.execute("select * from wordlocation where urlid=?",(u[0])).fetchone()
+            if v!=None: return True
+        return False
 
     def addlinkref(self, urlfrom, urlto, linkltext):
         pass
