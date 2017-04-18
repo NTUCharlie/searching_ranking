@@ -86,9 +86,9 @@ class crawler:
                 for link in links:
                     if 'href' in dict(link.attrs):
                         url=urljoin(page, link['href'])
-                        if url.find("'")!=-1:
-                            continue
-                        url=url.split('#')[0]
+                        #if url.find("'")!=-1:
+                            #continue
+                        #url=url.split('#')[0]
                         if url[0:4]=='http' and not self.isindexed(url):
                             newpages.add(url)
                         linktext=self.gettextonly(link)
@@ -113,4 +113,22 @@ class crawler:
 
 
 #c=crawler('searchindex.db')
-#c.crawl(pages=["http://www.6park.com/sg.shtml"])
+#c.crawl(pages=["http://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001432170937506ecfb2f6adf8e4757939732f3e32b781c000"])
+
+
+class searcher:
+    def __init__(self,dbname):
+        self.con.execute(dbname)
+
+    def __del__(self):
+        self.con.execute()
+
+    def getmatchrows(self,q):
+        fieldlist='WO.urlud'
+        tablelist=''
+        clauselist=''
+        wordids=[]
+
+        words=q.split(' ')
+        tablenumber=0
+        
