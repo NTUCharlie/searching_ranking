@@ -86,9 +86,9 @@ class crawler:
                 for link in links:
                     if 'href' in dict(link.attrs):
                         url=urljoin(page, link['href'])
-                        #if url.find("'")!=-1:
-                            #continue
-                        #url=url.split('#')[0]
+                        if url.find("'")!=-1:
+                            continue
+                        url=url.split('#')[0]
                         if url[0:4]=='http' and not self.isindexed(url):
                             newpages.add(url)
                         linktext=self.gettextonly(link)
@@ -113,22 +113,46 @@ class crawler:
 
 
 #c=crawler('searchindex.db')
-#c.crawl(pages=["http://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001432170937506ecfb2f6adf8e4757939732f3e32b781c000"])
+#c.crawl(pages=["https://en.wikipedia.org/wiki/List_of_blogs"])
 
 
 class searcher:
     def __init__(self,dbname):
-        self.con.execute(dbname)
+        self.con=sqlite3.connect(dbname)
 
     def __del__(self):
-        self.con.execute()
+        self.con.close()
 
     def getmatchrows(self,q):
-        fieldlist='WO.urlud'
+        fieldlist='w0.urlid'
         tablelist=''
         clauselist=''
         wordids=[]
 
         words=q.split(' ')
         tablenumber=0
-        
+
+        for word in words:
+            print(word)
+            wordrow=self.con.execute("select rowid from wordlist where word='%s'" % word).fetchone()
+            if wordrow!=None:
+                wordid=wordrow[0]
+                wordids.append(wordid)
+                if tablenumber>0:
+                    tablelist+=','
+                    clauselist+=' and '
+                    clauselist+='w%d.urlid=w%d.urlid and ' % (tablenumber-1,tablenumber)
+                fieldlist+=',w%d.location' % tablenumber
+                tablelist+='wordlocation w%d' % tablenumber
+                clauselist+='w%d.wordid=%d' % (tablenumber, wordid)
+                tablenumber+=1
+            else: print('find no {}'.format(word))
+        if wordrow:
+            fullquery='select %s from %s where %s' % (fieldlist,tablelist,clauselist)
+            print(fullquery)
+            cur=self.con.execute(fullquery)
+            rows=[row for row in cur]
+            return rows, wordid
+        else: pass
+#e=searcher('searchindex.db')
+#print(e.getindexmatchrows('english author'))
